@@ -27,12 +27,6 @@ rootProject.name = "quickjs-kt"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 include(":quickjs")
-include(":quickjs-converter-ktxserialization")
-include(":quickjs-converter-moshi")
-include(":samples:js-eval")
-include(":samples:js-eval-android")
-include(":samples:repl")
-include(":samples:openai")
-include(":samples:openai-android")
-include(":benchmark")
-include(":integration-test")
+// ponytail: оставлен только :quickjs. Конвертеры/samples/benchmark/integration-test
+// убраны — не используются и ломали конфигурацию composite build (linkDebugTestMingwX64).
+// Вернуть include при необходимости.
