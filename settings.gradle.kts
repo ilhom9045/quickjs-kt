@@ -31,11 +31,16 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 include(":quickjs")
 include(":quickjs-converter-ktxserialization")
 include(":quickjs-converter-moshi")
-include(":samples:js-eval")
-include(":samples:js-eval-android")
-include(":samples:repl")
-include(":samples:openai")
-include(":samples:openai-android")
-include(":benchmark")
-include(":integration-test:general")
-include(":integration-test:native-access")
+
+// ponytail: в композите NativeCMPWeb нужен только :quickjs — остальное тянет cmake
+// и mavenLocal и роняет sync студии. Автономная сборка форка их по-прежнему видит.
+if (gradle.parent == null) {
+    include(":samples:js-eval")
+    include(":samples:js-eval-android")
+    include(":samples:repl")
+    include(":samples:openai")
+    include(":samples:openai-android")
+    include(":benchmark")
+    include(":integration-test:general")
+    include(":integration-test:native-access")
+}
