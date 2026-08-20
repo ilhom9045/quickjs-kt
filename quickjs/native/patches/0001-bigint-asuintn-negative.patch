@@ -1,0 +1,88 @@
+diff --git a/quickjs.c b/quickjs.c
+index e3716a4..57c7926 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -56284,6 +56284,42 @@ static JSValue js_bigint_valueOf(JSContext *ctx, JSValueConst this_val,
+     return js_thisBigIntValue(ctx, this_val);
+ }
+ 
++/* the low `bits` bits of `a`, zero extended. BigInt.asUintN never returns a
++   negative number, so one limb more than `bits` needs is allocated: without it
++   the top bit of the last limb would be read back as a sign. */
++static JSValue js_bigint_truncate_unsigned(JSContext *ctx, JSValue a,
++                                           uint64_t bits)
++{
++    JSBigIntBuf buf;
++    JSBigInt *r, *p;
++    uint64_t len;
++    int i, shift, sign;
++
++    len = bits / JS_LIMB_BITS + 1;
++    if (len > JS_BIGINT_MAX_SIZE) {
++        JS_FreeValue(ctx, a);
++        JS_ThrowRangeError(ctx, "BigInt is too large to allocate");
++        return JS_EXCEPTION;
++    }
++    p = JS_ToBigIntBuf(ctx, &buf, a);
++    sign = js_bigint_sign(p);
++    r = js_bigint_new(ctx, len);
++    if (!r) {
++        JS_FreeValue(ctx, a);
++        return JS_EXCEPTION;
++    }
++    for(i = 0; i < (int)len; i++)
++        r->tab[i] = i < p->len ? p->tab[i] : (sign ? (js_limb_t)-1 : 0);
++    shift = bits & (JS_LIMB_BITS - 1);
++    if (shift == 0)
++        r->tab[len - 1] = 0;
++    else
++        r->tab[len - 1] &= ((js_limb_t)1 << shift) - 1;
++    r = js_bigint_normalize(ctx, r);
++    JS_FreeValue(ctx, a);
++    return JS_CompactBigInt(ctx, r);
++}
++
+ static JSValue js_bigint_asUintN(JSContext *ctx,
+                                   JSValueConst this_val,
+                                   int argc, JSValueConst *argv, int asIntN)
+@@ -56302,7 +56338,12 @@ static JSValue js_bigint_asUintN(JSContext *ctx,
+     } else if (JS_VALUE_GET_TAG(a) == JS_TAG_SHORT_BIG_INT) {
+         /* fast case */
+         if (bits >= JS_SHORT_BIG_INT_BITS) {
+-            res = a;
++            /* asUintN owes a non-negative answer and a negative short bigint
++               is not one: -1n means 2^bits - 1, which no longer fits here. */
++            if (!asIntN && JS_VALUE_GET_SHORT_BIG_INT(a) < 0)
++                res = js_bigint_truncate_unsigned(ctx, a, bits);
++            else
++                res = a;
+         } else {
+             uint64_t v;
+             int shift;
+@@ -56315,6 +56356,14 @@ static JSValue js_bigint_asUintN(JSContext *ctx,
+                 v = v >> shift;
+             res = __JS_NewShortBigInt(ctx, v);
+         }
++    } else if (!asIntN) {
++        /* same reason, and here the truncation below would keep the sign bit
++           of the top limb whenever `bits` lands on a limb boundary. */
++        JSBigInt *p = JS_VALUE_GET_PTR(a);
++        if (!js_bigint_sign(p) && bits >= (uint64_t)p->len * JS_LIMB_BITS)
++            res = a;
++        else
++            res = js_bigint_truncate_unsigned(ctx, a, bits);
+     } else {
+         JSBigInt *r, *p = JS_VALUE_GET_PTR(a);
+         if (bits >= p->len * JS_LIMB_BITS) {
+@@ -56334,10 +56383,7 @@ static JSValue js_bigint_asUintN(JSContext *ctx,
+             shift = (-bits) & (JS_LIMB_BITS - 1);
+             /* 0 <= shift <= JS_LIMB_BITS - 1 */
+             v = p->tab[len - 1] << shift;
+-            if (asIntN)
+-                v = (js_slimb_t)v >> shift;
+-            else
+-                v = v >> shift;
++            v = (js_slimb_t)v >> shift;
+             r->tab[len - 1] = v;
+             r = js_bigint_normalize(ctx, r);
+             JS_FreeValue(ctx, a);

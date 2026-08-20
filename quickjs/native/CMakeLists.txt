@@ -106,6 +106,34 @@ if (BUILD_WITH_JNI)
             "jni/mapping")
 endif ()
 
+# Patches to the vendored QuickJS.
+#
+# quickjs/ is a submodule of bellard/quickjs, so fixes cannot live as commits
+# there. They live as patches here and are applied before the first compile.
+# Re-applying is a no-op: `git apply --reverse --check` succeeds only on an
+# already patched tree.
+find_package(Git QUIET)
+file(GLOB quickjs_patches "${CURRENT_DIR}/patches/*.patch")
+list(SORT quickjs_patches)
+foreach (patch ${quickjs_patches})
+    execute_process(
+            COMMAND ${GIT_EXECUTABLE} apply --reverse --check "${patch}"
+            WORKING_DIRECTORY "${CURRENT_DIR}/quickjs"
+            RESULT_VARIABLE already_applied
+            OUTPUT_QUIET ERROR_QUIET)
+    if (NOT already_applied EQUAL 0)
+        execute_process(
+                COMMAND ${GIT_EXECUTABLE} apply "${patch}"
+                WORKING_DIRECTORY "${CURRENT_DIR}/quickjs"
+                RESULT_VARIABLE applied
+                ERROR_VARIABLE apply_error)
+        if (NOT applied EQUAL 0)
+            message(FATAL_ERROR "Failed to apply ${patch}: ${apply_error}")
+        endif ()
+        message(STATUS "Applied ${patch}")
+    endif ()
+endforeach ()
+
 # QuickJS sources
 set(quickjs_sources
         "quickjs/cutils.c"
