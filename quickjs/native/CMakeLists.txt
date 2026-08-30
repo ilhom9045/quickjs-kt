@@ -159,6 +159,10 @@ if (LIBRARY_TYPE STREQUAL "shared")
     if (TARGET_PLATFORM STREQUAL "android")
         target_link_libraries(quickjs log)
         target_link_options(quickjs PRIVATE -Wl,-z,max-page-size=16384)
+        # -fvisibility=hidden снят ради экспорта JS_* (см. build.gradle.kts), и
+        # межфайловые вызовы внутри .so ушли через PLT. -Bsymbolic-functions
+        # связывает их обратно напрямую, не убирая символы из таблицы экспорта.
+        target_link_options(quickjs PRIVATE -Wl,-Bsymbolic-functions)
     endif ()
 elseif (LIBRARY_TYPE STREQUAL "static")
     add_library(quickjs STATIC ${all_sources})
