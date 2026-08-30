@@ -44,7 +44,9 @@ internal fun Project.buildQuickJsNativeLibrary(
         }
     }
 
-    val buildType = if (release) "MinSizeRel" else "Debug"
+    // Release, не MinSizeRel: диспатч-цикл интерпретатора — горячий путь, и -Os
+    // на нём стоит двузначных процентов против -O2/-O3.
+    val buildType = if (release) "Release" else "Debug"
     val commonArgs = arrayOf(
         "-B",
         "build/$platform",

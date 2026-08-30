@@ -48,7 +48,9 @@ fun Project.applyQuickJsNativeBuildTasks(cmakeFile: File) {
                     platform = currentPlatform,
                     sharedLib = true,
                     withJni = true,
-                    release = false,
+                    // Debug-движок в локальной разработке — это -O0 на интерпретаторе,
+                    // на котором меряется весь гость. Отлаживаешь сам движок — верни.
+                    release = true,
                     outputDir = File(jniLibOutDir, currentPlatform.name)
                 )
             }
@@ -74,7 +76,9 @@ fun Project.applyQuickJsNativeBuildTasks(cmakeFile: File) {
                     platform = platform,
                     sharedLib = false,
                     withJni = false,
-                    release = false,
+                    // См. buildQuickJsJniLibs: интерпретатор без оптимизаций не нужен
+                    // никому, кроме отладки самого движка.
+                    release = true,
                     outputDir = nativeStaticLibOutDir,
                     withPlatformSuffixIfCopy = true,
                 )

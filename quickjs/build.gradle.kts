@@ -112,10 +112,11 @@ android {
         val release by getting {
             externalNativeBuild {
                 cmake {
-                    arguments("-DCMAKE_BUILD_TYPE=MinSizeRel")
+                    // Release (-O3 из конфигурации CMake), не MinSizeRel/-Os:
+                    // скорость диспатча интерпретатора важнее размера .so.
+                    arguments("-DCMAKE_BUILD_TYPE=Release")
                     cFlags(
                         "-g0",
-                        "-Os",
                         "-fomit-frame-pointer",
                         "-DNDEBUG",
                         // -fvisibility=hidden убран: с ним libquickjs.so экспортирует
