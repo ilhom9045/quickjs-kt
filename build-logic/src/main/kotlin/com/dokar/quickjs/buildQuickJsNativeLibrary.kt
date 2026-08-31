@@ -87,9 +87,13 @@ internal fun Project.buildQuickJsNativeLibrary(
         }
     }
 
+    // Xcode — мульти-конфигурационный генератор: CMAKE_BUILD_TYPE он игнорирует,
+    // без --config xcodebuild собирает Debug, а copyLibToOutputDir ищет $buildType-*.
     val buildArgs = when (platform) {
         Platform.ios_aarch64 -> arrayOf(
             commonArgs[1],
+            "--config",
+            buildType,
             "--",
             "-sdk",
             "iphoneos"
@@ -98,6 +102,8 @@ internal fun Project.buildQuickJsNativeLibrary(
         Platform.ios_x64,
         Platform.ios_simulator_aarch64 -> arrayOf(
             commonArgs[1],
+            "--config",
+            buildType,
             "--",
             "-sdk",
             "iphonesimulator"
