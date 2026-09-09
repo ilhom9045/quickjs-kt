@@ -180,3 +180,29 @@ if (LIBRARY_TYPE STREQUAL "shared" AND TARGET_PLATFORM STREQUAL "android")
     target_compile_options(quickjs PRIVATE $<$<CONFIG:Release>:-flto=thin>)
     target_link_options(quickjs PRIVATE $<$<CONFIG:Release>:-flto=thin>)
 endif ()
+
+# PGO для Android .so. generate — инструментированная сборка, профиль пишет
+# common/quickjs_pgo.c; use — сборка по pgo/quickjs-android.profdata, если он есть.
+# Хеш профиля идёт в командную строку определением: иначе новый профиль при том же
+# пути не пересобирает объекты. Предупреждения о функциях без профиля и устаревшем
+# профиле гасятся: профиль снимается на arm64, а собираются четыре ABI.
+set(QUICKJS_PGO "use" CACHE STRING "PGO для Android: off | generate | use")
+if (LIBRARY_TYPE STREQUAL "shared" AND TARGET_PLATFORM STREQUAL "android")
+    if (QUICKJS_PGO STREQUAL "generate")
+        target_sources(quickjs PRIVATE "common/quickjs_pgo.c")
+        target_compile_options(quickjs PRIVATE -fprofile-generate)
+        target_link_options(quickjs PRIVATE -fprofile-generate)
+    elseif (QUICKJS_PGO STREQUAL "use")
+        set(pgo_profile "${CURRENT_DIR}/pgo/quickjs-android.profdata")
+        if (EXISTS "${pgo_profile}")
+            file(MD5 "${pgo_profile}" pgo_id)
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${pgo_profile}")
+            target_compile_options(quickjs PRIVATE
+                    -fprofile-use=${pgo_profile}
+                    -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date
+                    -DQUICKJS_PGO_ID=${pgo_id})
+            target_link_options(quickjs PRIVATE -fprofile-use=${pgo_profile})
+            message(STATUS "QuickJS PGO: ${pgo_profile}")
+        endif ()
+    endif ()
+endif ()

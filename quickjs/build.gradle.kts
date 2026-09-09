@@ -115,6 +115,9 @@ android {
                     // Release (-O3 из конфигурации CMake), не MinSizeRel/-Os:
                     // скорость диспатча интерпретатора важнее размера .so.
                     arguments("-DCMAKE_BUILD_TYPE=Release")
+                    // PGO: -PquickjsPgo=generate — инструментированный .so, off — без профиля,
+                    // по умолчанию use — сборка по native/pgo/quickjs-android.profdata (см. CMakeLists).
+                    arguments("-DQUICKJS_PGO=${providers.gradleProperty("quickjsPgo").getOrElse("use")}")
                     cFlags(
                         "-g0",
                         "-fomit-frame-pointer",
