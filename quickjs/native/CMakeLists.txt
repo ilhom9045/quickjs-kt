@@ -167,3 +167,16 @@ if (LIBRARY_TYPE STREQUAL "shared")
 elseif (LIBRARY_TYPE STREQUAL "static")
     add_library(quickjs STATIC ${all_sources})
 endif ()
+
+# Флаги upstream-Makefile QuickJS, которых CMake-сборка не ставила: -fwrapv (движок
+# рассчитывает на wrap знакового переполнения) и -funsigned-char.
+target_compile_options(quickjs PRIVATE -fwrapv -funsigned-char)
+
+# Thin-LTO только для Android .so. Статическая .a (iOS/macOS для Kotlin/Native) —
+# это bitcode, который чужой clang не прочтёт; JVM-библиотеки собирает zig cc, а его
+# линкер LTO не умеет («LTO requires using LLD»). Флаги прямые, а не
+# INTERPROCEDURAL_OPTIMIZATION: проверка CMake подсовывает NDK-clang -fuse-ld=gold.
+if (LIBRARY_TYPE STREQUAL "shared" AND TARGET_PLATFORM STREQUAL "android")
+    target_compile_options(quickjs PRIVATE $<$<CONFIG:Release>:-flto=thin>)
+    target_link_options(quickjs PRIVATE $<$<CONFIG:Release>:-flto=thin>)
+endif ()
